@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/11" xmlns:fx="http://javafx.com/fxml/1" 
+      fx:controller="com.todoapp.controller.MainController"
+      spacing="10" style="-fx-background-color: #f5f5f5;">
+
+    <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+    </padding>
+
+    <!-- Header -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Todo App" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <TextField fx:id="searchField" promptText="Search todos..." 
+                   style="-fx-pref-width: 300px;"/>
+    </HBox>
+
+    <!-- Stats -->
+    <Label fx:id="statsLabel" style="-fx-font-size: 14px; -fx-text-fill: #666;"/>
+
+    <Separator/>
+
+    <HBox spacing="20" VBox.vgrow="ALWAYS">
+        <!-- Left Panel - Projects -->
+        <VBox spacing="10" style="-fx-pref-width: 300px;">
+            <Label text="Projects" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+            
+            <HBox spacing="5">
+                <TextField fx:id="newProjectField" promptText="New project name..." 
+                           HBox.hgrow="ALWAYS"/>
+                <Button fx:id="addProjectButton" text="Add" 
+                        onAction="#handleAddProject" 
+                        style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+            </HBox>
+            
+            <ListView fx:id="projectListView" VBox.vgrow="ALWAYS"/>
+        </VBox>
+
+        <!-- Right Panel - Project Details or Search Results -->
+        <VBox fx:id="projectDetailView" spacing="10" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label fx:id="projectTitleLabel" text="Project Name" 
+                       style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+                <Label fx:id="projectStatsLabel" text="(0/0)" 
+                       style="-fx-font-size: 14px; -fx-text-fill: #666;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="deleteProjectButton" text="Delete Project" 
+                        onAction="#handleDeleteProject" 
+                        style="-fx-background-color: #f44336; -fx-text-fill: white;"/>
+            </HBox>
+            
+            <HBox spacing="5">
+                <TextField fx:id="newTodoField" promptText="New todo..." 
+                           HBox.hgrow="ALWAYS"/>
+                <DatePicker fx:id="dueDatePicker" promptText="Due date"/>
+                <Button fx:id="addTodoButton" text="Add Todo" 
+                        onAction="#handleAddTodo" 
+                        style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
+            </HBox>
+            
+            <ListView fx:id="todoListView" VBox.vgrow="ALWAYS"/>
+        </VBox>
+
+        <!-- Search Results Panel -->
+        <VBox fx:id="searchResultsView" spacing="10" VBox.vgrow="ALWAYS" 
+              HBox.hgrow="ALWAYS" visible="false">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label fx:id="searchResultsLabel" text="Search Results" 
+                       style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+            </HBox>
+            
+            <ListView fx:id="searchResultsListView" VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </HBox>
+</VBox>
