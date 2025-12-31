@@ -1,7 +1,7 @@
 package com.todoapp.service;
 
-import com.todoapp.model.Project;
 import com.todoapp.model.Todo;
+import com.todoapp.repository.SqliteTodoRepository;
 import com.todoapp.repository.TodoRepository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -10,60 +10,40 @@ import java.util.Optional;
 public class TodoService {
     private final TodoRepository repository;
     
-    public TodoService(TodoRepository repository) {
-        this.repository = repository;
-        this.repository.initializeDefaultData();
+    public TodoService() {
+        this.repository = new SqliteTodoRepository();
     }
     
-    public List<Project> getAllProjects() {
-        return repository.getAllProjects();
+    public List<Todo> getAllTodos() {
+        return repository.getAllTodos();
     }
     
-    public Project createProject(String name) {
-        validateProjectName(name);
-        Project project = new Project(name.trim());
-        return repository.saveProject(project);
-    }
-    
-    public boolean deleteProject(String projectId) {
-        return repository.deleteProject(projectId);
-    }
-    
-    public Optional<Project> getProject(String projectId) {
-        return repository.getProject(projectId);
-    }
-    
-    public Project updateProjectName(String projectId, String newName) {
-        validateProjectName(newName);
-        return repository.getProject(projectId).map(project -> {
-            project.setName(newName.trim());
-            return repository.saveProject(project);
-        }).orElse(null);
-    }
-    
-    public Todo createTodo(String projectId, String title, LocalDateTime dueTime) {
+    public Todo createTodo(String title) {
         validateTodoTitle(title);
-        validateProjectExists(projectId);
-        
         Todo todo = new Todo(title.trim());
-        if (dueTime != null) {
-            validateDueDate(dueTime);
-            todo.setTime(dueTime);
-        }
-        
-        return repository.saveTodo(projectId, todo);
+        return repository.saveTodo(todo);
     }
     
-    public boolean toggleTodoDone(String projectId, String todoId) {
-        return repository.getTodo(projectId, todoId).map(todo -> {
+    public Todo createTodo(String title, String category, LocalDateTime dueDate) {
+        validateTodoTitle(title);
+        Todo todo = new Todo(title.trim());
+        todo.setCategory(category != null ? category.trim() : "General");
+        if (dueDate != null) {
+            todo.setTime(dueDate);
+        }
+        return repository.saveTodo(todo);
+    }
+    
+    public boolean toggleTodoDone(String todoId) {
+        return repository.getTodo(todoId).map(todo -> {
             todo.toggleDone();
-            repository.saveTodo(projectId, todo);
+            repository.saveTodo(todo);
             return true;
         }).orElse(false);
     }
     
-    public boolean updateTodo(String projectId, String todoId, String newTitle, LocalDateTime newTime) {
-        return repository.getTodo(projectId, todoId).map(todo -> {
+    public boolean updateTodo(String todoId, String newTitle, String newCategory, LocalDateTime newTime) {
+        return repository.getTodo(todoId).map(todo -> {
             boolean updated = false;
             
             if (newTitle != null && !newTitle.trim().isEmpty() && !newTitle.trim().equals(todo.getTitle())) {
@@ -72,8 +52,12 @@ public class TodoService {
                 updated = true;
             }
             
+            if (newCategory != null && !newCategory.equals(todo.getCategory())) {
+                todo.setCategory(newCategory);
+                updated = true;
+            }
+            
             if (newTime != null) {
-                validateDueDate(newTime);
                 todo.setTime(newTime);
                 updated = true;
             } else if (newTime == null && todo.getTime() != null) {
@@ -81,13 +65,13 @@ public class TodoService {
                 updated = true;
             }
             
-            if (updated) repository.saveTodo(projectId, todo);
+            if (updated) repository.saveTodo(todo);
             return updated;
         }).orElse(false);
     }
     
-    public boolean deleteTodo(String projectId, String todoId) {
-        return repository.deleteTodo(projectId, todoId);
+    public boolean deleteTodo(String todoId) {
+        return repository.deleteTodo(todoId);
     }
     
     public List<Todo> searchTodos(String query) {
@@ -103,51 +87,41 @@ public class TodoService {
         return repository.getOverdueTodos();
     }
     
-    public List<Todo> getTodosByProject(String projectId) {
-        return repository.getProject(projectId)
-                .map(Project::getTodos)
-                .orElse(List.of());
+    public List<Todo> getTodosByCategory(String category) {
+        return repository.getTodosByCategory(category);
     }
     
-    public int getTotalProjects() { return repository.getProjectCount(); }
+    public List<String> getAllCategories() {
+        return repository.getAllCategories();
+    }
     
-    public int getTotalTodos() { return repository.getTotalTodoCount(); }
+    public int getTotalTodoCount() { return repository.getTotalTodoCount(); }
     
-    public int getCompletedTodosCount() { return repository.getCompletedTodoCount(); }
+    public int getCompletedTodoCount() { return repository.getCompletedTodoCount(); }
     
-    public double getOverallCompletionPercentage() {
-        int total = getTotalTodos();
+    public int getPendingTodoCount() {
+        return getTotalTodoCount() - getCompletedTodoCount();
+    }
+    
+    public double getCompletionPercentage() {
+        int total = getTotalTodoCount();
         if (total == 0) return 0.0;
-        return (getCompletedTodosCount() * 100.0) / total;
+        return (getCompletedTodoCount() * 100.0) / total;
     }
     
-    private void validateProjectName(String name) {
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Project name cannot be empty");
-        }
-        if (name.trim().length() > 100) {
-            throw new IllegalArgumentException("Project name cannot exceed 100 characters");
-        }
+    public String getStatsText() {
+        int total = getTotalTodoCount();
+        int completed = getCompletedTodoCount();
+        int pending = total - completed;
+        return String.format("%d total • %d done • %d pending", total, completed, pending);
     }
     
     private void validateTodoTitle(String title) {
         if (title == null || title.trim().isEmpty()) {
             throw new IllegalArgumentException("Todo title cannot be empty");
         }
-        if (title.trim().length() > 500) {
-            throw new IllegalArgumentException("Todo title cannot exceed 500 characters");
-        }
-    }
-    
-    private void validateProjectExists(String projectId) {
-        if (!repository.projectExists(projectId)) {
-            throw new IllegalArgumentException("Project not found: " + projectId);
-        }
-    }
-    
-    private void validateDueDate(LocalDateTime dueTime) {
-        if (dueTime.isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Due date cannot be in the past");
+        if (title.trim().length() > 200) {
+            throw new IllegalArgumentException("Todo title cannot exceed 200 characters");
         }
     }
 }

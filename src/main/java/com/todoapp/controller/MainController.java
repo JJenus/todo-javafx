@@ -1,350 +1,516 @@
 package com.todoapp.controller;
 
-import com.todoapp.model.Project;
 import com.todoapp.model.Todo;
-import com.todoapp.repository.SqliteTodoRepository;
 import com.todoapp.service.TodoService;
-import javafx.beans.property.SimpleStringProperty;
+import io.github.palexdev.materialfx.controls.*;
+import javafx.animation.FadeTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.util.Duration;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.javafx.FontIcon;
+
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
+import static com.todoapp.util.AppColors.*;
+
 public class MainController implements Initializable {
-    
-    @FXML private ListView<Project> projectListView;
-    @FXML private ListView<Todo> todoListView;
-    @FXML private TextField searchField;
+
+    @FXML private BorderPane rootPane;
+    @FXML private VBox mainContainer;
+    @FXML private ScrollPane scrollPane;
+    @FXML private Label dateNumberLabel;
+    @FXML private Label monthYearLabel;
+    @FXML private Label dayLabel;
     @FXML private Label statsLabel;
-    @FXML private VBox projectDetailView;
-    @FXML private TextField newProjectField;
-    @FXML private TextField newTodoField;
-    @FXML private DatePicker dueDatePicker;
-    @FXML private Label projectTitleLabel;
-    @FXML private Label projectStatsLabel;
-    @FXML private Button addProjectButton;
-    @FXML private Button addTodoButton;
-    @FXML private Button deleteProjectButton;
-    @FXML private VBox searchResultsView;
-    @FXML private ListView<Todo> searchResultsListView;
-    @FXML private Label searchResultsLabel;
-    
-    private final TodoService todoService;
-    private final ObservableList<Project> projects = FXCollections.observableArrayList();
+    @FXML private MFXTextField newTodoField;
+    @FXML private MFXButton addButton;
+
+    private final TodoService todoService = new TodoService();
     private final ObservableList<Todo> todos = FXCollections.observableArrayList();
-    private final ObservableList<Todo> searchResults = FXCollections.observableArrayList();
-    
-    private Project currentProject;
-    private boolean isSearching = false;
-    
-    public MainController() {
-        this.todoService = new TodoService(new SqliteTodoRepository());
-    }
-    
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy");
+    private final DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("EEEE");
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        setupProjectListView();
-        setupTodoListView();
-        setupSearchResultsListView();
-        setupSearchField();
-        loadInitialData();
+        setupUI();
+        loadTodos();
+        updateDateDisplay();
         updateStats();
-        
-        dueDatePicker.setDayCellFactory(picker -> new DateCell() {
-            @Override
-            public void updateItem(LocalDate date, boolean empty) {
-                super.updateItem(date, empty);
-                setDisable(empty || date.isBefore(LocalDate.now()));
-            }
-        });
     }
-    
-    private void setupProjectListView() {
-        projectListView.setItems(projects);
-        projectListView.setCellFactory(param -> new ListCell<>() {
-            @Override
-            protected void updateItem(Project project, boolean empty) {
-                super.updateItem(project, empty);
-                if (empty || project == null) {
-                    setText(null);
-                    setGraphic(null);
-                } else {
-                    setText(formatProjectDisplay(project));
-                }
-            }
-        });
-        
-        projectListView.getSelectionModel().selectedItemProperty()
-                .addListener((obs, oldVal, newVal) -> {
-                    if (newVal != null) showProjectDetails(newVal);
-                });
-    }
-    
-    private void setupTodoListView() {
-        todoListView.setItems(todos);
-        todoListView.setCellFactory(param -> new ListCell<>() {
-            @Override
-            protected void updateItem(Todo todo, boolean empty) {
-                super.updateItem(todo, empty);
-                if (empty || todo == null) {
-                    setText(null);
-                    setGraphic(null);
-                } else {
-                    setGraphic(createTodoCellContent(todo));
-                }
-            }
-        });
-    }
-    
-    private void setupSearchResultsListView() {
-        searchResultsListView.setItems(searchResults);
-        searchResultsListView.setCellFactory(param -> new ListCell<>() {
-            @Override
-            protected void updateItem(Todo todo, boolean empty) {
-                super.updateItem(todo, empty);
-                if (empty || todo == null) {
-                    setText(null);
-                    setGraphic(null);
-                } else {
-                    setGraphic(createTodoCellContent(todo));
-                }
-            }
-        });
-    }
-    
-    private VBox createTodoCellContent(Todo todo) {
-        CheckBox checkBox = new CheckBox();
-        Label titleLabel = new Label(todo.getTitle());
-        Label detailsLabel = new Label();
-        
-        if (todo.isDone()) {
-            titleLabel.getStyleClass().add("done-text");
-            titleLabel.setTextFill(Color.GRAY);
-            detailsLabel.setText("Completed");
-        } else if (todo.isOverdue()) {
-            titleLabel.getStyleClass().add("overdue-text");
-            titleLabel.setTextFill(Color.RED);
-            detailsLabel.setText("Overdue since " + todo.getFormattedDueDate());
-        } else if (todo.isDueToday()) {
-            detailsLabel.setText("Due Today");
-            detailsLabel.setTextFill(Color.ORANGE);
-        } else if (todo.hasDueDate()) {
-            detailsLabel.setText("Due: " + todo.getFormattedDueDate());
-        }
-        
-        checkBox.setSelected(todo.isDone());
-        checkBox.setOnAction(e -> {
-            if (currentProject != null) {
-                todoService.toggleTodoDone(currentProject.getId(), todo.getId());
-                refreshCurrentView();
-                updateStats();
-            }
-        });
-        
-        VBox content = new VBox(5, 
-            new javafx.scene.layout.HBox(10, checkBox, titleLabel), 
-            detailsLabel
+
+    private void setupUI() {
+        // Set root background via CSS class
+        rootPane.setStyle("-fx-background-color: " + toHex(APP_BACKGROUND) + ";");
+
+        // Set up date display
+        updateDateDisplay();
+
+        // Configure scroll pane
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
+
+        // Set up main container
+        mainContainer.setSpacing(8);
+        mainContainer.setPadding(new Insets(20));
+        mainContainer.setStyle("-fx-background-color: " + toHex(SURFACE) + ";");
+
+        // Configure MaterialFX text field
+        newTodoField.setFloatingText("Add a new todo");
+        newTodoField.setPrefWidth(400);
+        newTodoField.setStyle("-mfx-background-color: " + toHex(INPUT_BACKGROUND) + ";" +
+                "-mfx-border-color: " + toHex(INPUT_BORDER) + ";" +
+                "-mfx-border-radius: 4;" +
+                "-fx-prompt-text-fill: " + toHex(SECONDARY_TEXT) + ";" +
+                "-fx-text-fill: " + toHex(PRIMARY_TEXT) + ";");
+
+        // Override MaterialFX focus color
+        newTodoField.getStyleClass().add("custom-mfx-text-field");
+
+        // Configure MaterialFX button
+        addButton.setText("ADD");
+        addButton.setStyle(
+                "-mfx-background-color: " + toHex(PRIMARY_ACTION) + ";" +
+                        "-mfx-text-fill: white;" +
+                        "-mfx-background-radius: 4;" +
+                        "-mfx-depth-level: LEVEL2;"
         );
-        content.setPadding(new javafx.geometry.Insets(5));
-        
-        content.setOnMouseClicked(e -> {
-            if (e.getClickCount() == 2) editTodo(todo);
-        });
-        
-        return content;
+
+        addButton.setRippleAnimateBackground(false);
+
+        // Set up add button and field actions
+        addButton.setOnAction(e -> handleAddTodo());
+        newTodoField.setOnAction(e -> handleAddTodo());
+
+        // Custom hover effects for button
+        addButton.setOnMouseEntered(e ->
+                addButton.setStyle(
+                        "-mfx-background-color: " + toHex(PRIMARY_ACTION_HOVER) + ";" +
+                                "-mfx-text-fill: white;" +
+                                "-mfx-background-radius: 4;" +
+                                "-mfx-depth-level: LEVEL2;"
+                )
+        );
+
+
+        addButton.setOnMouseExited(e ->
+                addButton.setStyle("-mfx-background-color: " + toHex(PRIMARY_ACTION) + ";" +
+                        "-mfx-text-fill: white;" +
+                        "-mfx-font-weight: bold;" +
+                        "-mfx-background-radius: 4;" +
+                        "-mfx-depth-level: LEVEL2;")
+        );
     }
-    
-    private void setupSearchField() {
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal == null || newVal.trim().isEmpty()) {
-                exitSearchMode();
+
+    private void updateDateDisplay() {
+        LocalDate today = LocalDate.now();
+        dateNumberLabel.setText(today.format(DateTimeFormatter.ofPattern("dd")));
+        monthYearLabel.setText(today.format(DateTimeFormatter.ofPattern("MMM yyyy")).toUpperCase());
+        dayLabel.setText(today.format(dayFormatter).toUpperCase());
+
+        // Set text colors via inline styles
+        dateNumberLabel.setStyle("-fx-text-fill: " + toHex(PRIMARY_TEXT) + "; " +
+                "-fx-font-size: 48px; -fx-font-weight: bold;");
+        monthYearLabel.setStyle("-fx-text-fill: " + toHex(SECONDARY_TEXT) + "; " +
+                "-fx-font-size: 14px; -fx-font-weight: bold; -fx-letter-spacing: 1px;");
+        dayLabel.setStyle("-fx-text-fill: " + toHex(SECONDARY_TEXT) + "; " +
+                "-fx-font-size: 12px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
+    }
+
+    private void loadTodos() {
+        todos.setAll(todoService.getAllTodos());
+        renderTodos();
+    }
+
+    private void renderTodos() {
+        VBox todosContainer = new VBox(8);
+        todosContainer.setPadding(new Insets(20)); // Add padding here
+
+        // Create an outer container with padding
+        StackPane scrollContent = new StackPane();
+        scrollContent.setPadding(new Insets(20));
+        scrollContent.getChildren().add(todosContainer);
+
+        if (todos.isEmpty()) {
+            Label emptyLabel = new Label("No todos yet. Add one above!");
+            emptyLabel.setFont(Font.font("System", FontWeight.NORMAL, 14));
+            emptyLabel.setTextFill(DISABLED_TEXT);
+            emptyLabel.setPadding(new Insets(20));
+            emptyLabel.setAlignment(Pos.CENTER);
+            todosContainer.getChildren().add(emptyLabel);
+        } else {
+            for (Todo todo : todos) {
+                HBox todoItem = createTodoItem(todo);
+                todosContainer.getChildren().add(todoItem);
+            }
+        }
+
+        // Replace the content in scroll pane with padded container
+        scrollPane.setContent(scrollContent);
+    }
+
+    private HBox createTodoItem(Todo todo) {
+        HBox container = new HBox(12);
+        container.setPadding(new Insets(12, 16, 12, 12));
+        container.setAlignment(Pos.CENTER_LEFT);
+        container.setMaxWidth(Double.MAX_VALUE);
+
+        // Set base style
+        container.setStyle("-fx-background-color: " + toHex(DEFAULT_ITEM_BG) + "; " +
+                "-fx-background-radius: 4; " +
+                "-fx-border-color: " + toHex(CARD_BORDER) + "; " +
+                "-fx-border-width: 1; " +
+                "-fx-border-radius: 4; " +
+                "-fx-cursor: hand;");
+
+        // Add hover effect
+        container.setOnMouseEntered(e -> {
+            if (!todo.isDone()) {
+                container.setStyle("-fx-background-color: " + toHex(HOVER_ITEM_BG) + "; " +
+                        "-fx-background-radius: 4; " +
+                        "-fx-border-color: " + toHex(CARD_BORDER) + "; " +
+                        "-fx-border-width: 1; " +
+                        "-fx-border-radius: 4; " +
+                        "-fx-cursor: hand;");
+            }
+        });
+
+        container.setOnMouseExited(e -> {
+            if (todo.isDone()) {
+                container.setStyle("-fx-background-color: " + toHex(COMPLETED_ITEM_BG) + "; " +
+                        "-fx-background-radius: 4; " +
+                        "-fx-border-color: " + toHex(CARD_BORDER) + "; " +
+                        "-fx-border-width: 1; " +
+                        "-fx-border-radius: 4; " +
+                        "-fx-cursor: hand;");
             } else {
-                enterSearchMode(newVal.trim());
+                container.setStyle("-fx-background-color: " + toHex(DEFAULT_ITEM_BG) + "; " +
+                        "-fx-background-radius: 4; " +
+                        "-fx-border-color: " + toHex(CARD_BORDER) + "; " +
+                        "-fx-border-width: 1; " +
+                        "-fx-border-radius: 4; " +
+                        "-fx-cursor: hand;");
             }
         });
-    }
-    
-    private void loadInitialData() {
-        projects.setAll(todoService.getAllProjects());
-        if (!projects.isEmpty()) projectListView.getSelectionModel().select(0);
-    }
-    
-    private void showProjectDetails(Project project) {
-        currentProject = project;
-        isSearching = false;
-        projectDetailView.setVisible(true);
-        searchResultsView.setVisible(false);
-        projectTitleLabel.setText(project.getName());
-        projectStatsLabel.setText(String.format("(%d/%d completed)", 
-            project.getCompletedCount(), project.getTotalCount()));
-        todos.setAll(project.getTodos());
-    }
-    
-    private void enterSearchMode(String query) {
-        isSearching = true;
-        projectDetailView.setVisible(false);
-        searchResultsView.setVisible(true);
-        List<Todo> results = todoService.searchTodos(query);
-        searchResults.setAll(results);
-        searchResultsLabel.setText(String.format("Found %d results for \"%s\"", 
-            results.size(), query));
-    }
-    
-    private void exitSearchMode() {
-        isSearching = false;
-        searchResultsView.setVisible(false);
-        if (currentProject != null) {
-            projectDetailView.setVisible(true);
-            todos.setAll(currentProject.getTodos());
+
+        // Use MaterialFX checkbox
+        MFXCheckbox checkBox = new MFXCheckbox("");
+        checkBox.setSelected(todo.isDone());
+        checkBox.setStyle("-mfx-main-color: " + toHex(PRIMARY_ACTION) + ";" +
+                "-mfx-secondary-color: " + toHex(SECONDARY_ACTION) + ";");
+
+        checkBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            todoService.toggleTodoDone(todo.getId());
+            updateTodoItemStyle(container, todo, newVal);
+            updateStats();
+
+            // Animation
+            FadeTransition ft = new FadeTransition(Duration.millis(200), container);
+            ft.setFromValue(0.8);
+            ft.setToValue(1.0);
+            ft.play();
+        });
+
+        // Todo text
+        Label titleLabel = new Label(todo.getTitle());
+        titleLabel.setFont(Font.font("System", FontWeight.NORMAL, 14));
+        titleLabel.setWrapText(true);
+        titleLabel.setMaxWidth(400);
+        titleLabel.setTextFill(todo.isDone() ? DISABLED_TEXT : PRIMARY_TEXT);
+
+        if (todo.isDone()) {
+            titleLabel.setStyle("-fx-strikethrough: true;");
+            titleLabel.setTextFill(DISABLED_TEXT);
         }
+
+        // Right container for actions
+        HBox rightContainer = new HBox(8);
+        rightContainer.setAlignment(Pos.CENTER_RIGHT);
+        HBox.setHgrow(rightContainer, Priority.ALWAYS);
+
+        // Due date if exists
+        if (todo.hasDueDate()) {
+            Label dateLabel = new Label(todo.getFormattedDueDate());
+            dateLabel.setFont(Font.font("System", FontWeight.MEDIUM, 11));
+            dateLabel.setTextFill(SECONDARY_TEXT);
+            dateLabel.setPadding(new Insets(2, 8, 2, 8));
+            dateLabel.setStyle("-fx-background-color: " + toHex(ELEVATED_SURFACE) + "; " +
+                    "-fx-background-radius: 10;");
+            rightContainer.getChildren().add(dateLabel);
+        }
+
+        // Action buttons
+        HBox actionButtons = new HBox(4);
+        actionButtons.setAlignment(Pos.CENTER_RIGHT);
+
+        // Edit button using Ikonli icon
+        MFXButton editButton = new MFXButton(null);
+//        FontIcon editIcon = new FontIcon(Material2MZ.EDIT);
+        FontIcon editIcon = new FontIcon(FontAwesomeSolid.PENCIL_ALT);
+
+        editIcon.setIconSize(16);
+        editIcon.setIconColor(DEFAULT_ICON);
+        editButton.setGraphic(editIcon);
+        editButton.setStyle("-mfx-background-color: transparent;" +
+                "-fx-padding: 4;" +
+                "-fx-cursor: hand;" +
+                "-fx-min-width: 36px;" +
+                "-fx-min-height: 36px;");
+        editButton.setOnAction(e -> editTodo(todo));
+
+        editButton.setOnMouseEntered(e -> {
+            editIcon.setIconColor(ACTION_ICON);
+            editButton.setStyle("-mfx-background-color: " + toHex(ELEVATED_SURFACE) + ";" +
+                    "-fx-padding: 4;" +
+                    "-fx-background-radius: 4;" +
+                    "-fx-cursor: hand;" +
+                    "-fx-min-width: 36px;" +
+                    "-fx-min-height: 36px;");
+        });
+
+        editButton.setOnMouseExited(e -> {
+            editIcon.setIconColor(DEFAULT_ICON);
+            editButton.setStyle("-mfx-background-color: transparent;" +
+                    "-fx-padding: 4;" +
+                    "-fx-cursor: hand;" +
+                    "-fx-min-width: 36px;" +
+                    "-fx-min-height: 36px;");
+        });
+
+        // Delete button using Ikonli icon
+        MFXButton deleteButton = new MFXButton(null);
+        FontIcon deleteIcon = new FontIcon(FontAwesomeSolid.TRASH_ALT);
+        deleteIcon.setIconSize(16);
+        deleteIcon.setIconColor(DEFAULT_ICON);
+        deleteButton.setGraphic(deleteIcon);
+        deleteButton.setStyle("-mfx-background-color: transparent;" +
+                "-fx-padding: 4;" +
+                "-fx-cursor: hand;" +
+                "-fx-min-width: 36px;" +
+                "-fx-min-height: 36px;");
+        deleteButton.setOnAction(e -> deleteTodo(todo, container));
+
+        deleteButton.setOnMouseEntered(e -> {
+            deleteIcon.setIconColor(DANGER_ICON);
+            deleteButton.setStyle("-mfx-background-color: " + toHex(ELEVATED_SURFACE) + ";" +
+                    "-fx-padding: 4;" +
+                    "-fx-background-radius: 4;" +
+                    "-fx-cursor: hand;" +
+                    "-fx-min-width: 36px;" +
+                    "-fx-min-height: 36px;");
+        });
+
+        deleteButton.setOnMouseExited(e -> {
+            deleteIcon.setIconColor(DEFAULT_ICON);
+            deleteButton.setStyle("-mfx-background-color: transparent;" +
+                    "-fx-padding: 4;" +
+                    "-fx-cursor: hand;" +
+                    "-fx-min-width: 36px;" +
+                    "-fx-min-height: 36px;");
+        });
+
+        actionButtons.getChildren().addAll(editButton, deleteButton);
+        rightContainer.getChildren().add(actionButtons);
+
+        // Assemble container
+        container.getChildren().addAll(checkBox, titleLabel, rightContainer);
+
+        // Set initial completed style if needed
+        if (todo.isDone()) {
+            container.setStyle("-fx-background-color: " + toHex(COMPLETED_ITEM_BG) + "; " +
+                    "-fx-background-radius: 4; " +
+                    "-fx-border-color: " + toHex(CARD_BORDER) + "; " +
+                    "-fx-border-width: 1; " +
+                    "-fx-border-radius: 4; " +
+                    "-fx-cursor: hand;");
+        }
+
+        return container;
     }
-    
-    @FXML
-    private void handleAddProject() {
-        String name = newProjectField.getText().trim();
-        if (!name.isEmpty()) {
-            try {
-                Project project = todoService.createProject(name);
-                projects.add(project);
-                newProjectField.clear();
-                projectListView.getSelectionModel().select(project);
-                updateStats();
-            } catch (IllegalArgumentException e) {
-                showAlert("Error", e.getMessage(), Alert.AlertType.ERROR);
+
+    private void updateTodoItemStyle(HBox container, Todo todo, boolean isDone) {
+        if (isDone) {
+            container.setStyle("-fx-background-color: " + toHex(COMPLETED_ITEM_BG) + "; " +
+                    "-fx-background-radius: 4; " +
+                    "-fx-border-color: " + toHex(CARD_BORDER) + "; " +
+                    "-fx-border-width: 1; " +
+                    "-fx-border-radius: 4; " +
+                    "-fx-cursor: hand;");
+
+            for (javafx.scene.Node node : container.getChildren()) {
+                if (node instanceof Label) {
+                    ((Label) node).setTextFill(DISABLED_TEXT);
+                    node.setStyle("-fx-strikethrough: true;");
+                }
+            }
+        } else {
+            container.setStyle("-fx-background-color: " + toHex(DEFAULT_ITEM_BG) + "; " +
+                    "-fx-background-radius: 4; " +
+                    "-fx-border-color: " + toHex(CARD_BORDER) + "; " +
+                    "-fx-border-width: 1; " +
+                    "-fx-border-radius: 4; " +
+                    "-fx-cursor: hand;");
+
+            for (javafx.scene.Node node : container.getChildren()) {
+                if (node instanceof Label) {
+                    ((Label) node).setTextFill(PRIMARY_TEXT);
+                    node.setStyle("-fx-strikethrough: false;");
+                }
             }
         }
     }
-    
+
     @FXML
     private void handleAddTodo() {
-        if (currentProject == null) return;
         String title = newTodoField.getText().trim();
         if (!title.isEmpty()) {
             try {
-                LocalDateTime dueTime = dueDatePicker.getValue() != null 
-                    ? dueDatePicker.getValue().atStartOfDay() 
-                    : null;
-                Todo todo = todoService.createTodo(currentProject.getId(), title, dueTime);
-                todos.add(todo);
+                todoService.createTodo(title);
                 newTodoField.clear();
-                dueDatePicker.setValue(null);
+                newTodoField.requestFocus();
+                loadTodos();
                 updateStats();
-                updateProjectStats();
+
+                // Scroll to top (new items are added at top)
+                scrollPane.setVvalue(0);
+
             } catch (IllegalArgumentException e) {
                 showAlert("Error", e.getMessage(), Alert.AlertType.ERROR);
             }
         }
     }
-    
-    @FXML
-    private void handleDeleteProject() {
-        if (currentProject != null) confirmDeleteProject(currentProject);
-    }
-    
-    private void confirmDeleteProject(Project project) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Delete Project");
-        alert.setHeaderText("Delete '" + project.getName() + "'?");
-        alert.setContentText("This will delete all todos in this project.");
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            boolean deleted = todoService.deleteProject(project.getId());
-            if (deleted) {
-                projects.remove(project);
-                if (currentProject == project) {
-                    currentProject = null;
-                    projectDetailView.setVisible(false);
-                }
-                updateStats();
-                showAlert("Success", "Project deleted.", Alert.AlertType.INFORMATION);
-            }
-        }
-    }
-    
+
     private void editTodo(Todo todo) {
         Dialog<Todo> dialog = new Dialog<>();
         dialog.setTitle("Edit Todo");
+        dialog.setHeaderText(null);
+
         ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
-        
-        TextField titleField = new TextField(todo.getTitle());
+        ButtonType cancelButtonType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
+
+        // Create form with MaterialFX controls
+        MFXTextField titleField = new MFXTextField(todo.getTitle());
+        titleField.setFloatingText("Todo title");
+        titleField.setPrefWidth(300);
+        titleField.setStyle("-mfx-background-color: " + toHex(INPUT_BACKGROUND) + ";" +
+                "-mfx-border-color: " + toHex(INPUT_BORDER) + ";" +
+                "-mfx-border-radius: 4;" +
+                "-fx-text-fill: " + toHex(PRIMARY_TEXT) + ";");
+
         DatePicker datePicker = new DatePicker();
-        if (todo.getTime() != null) datePicker.setValue(todo.getTime().toLocalDate());
-        
-        VBox form = new VBox(10, 
-            new Label("Title:"), titleField,
-            new Label("Due Date:"), datePicker);
-        form.setPadding(new javafx.geometry.Insets(20));
+        if (todo.getTime() != null) {
+            datePicker.setValue(todo.getTime().toLocalDate());
+        }
+        datePicker.setPromptText("Due date (optional)");
+        datePicker.setStyle("-fx-background-color: " + toHex(INPUT_BACKGROUND) + "; " +
+                "-fx-border-color: " + toHex(INPUT_BORDER) + ";");
+
+        VBox form = new VBox(12,
+                new Label("Title:"), titleField,
+                new Label("Due Date:"), datePicker);
+        form.setPadding(new Insets(20));
+
+        // Style labels
+        for (javafx.scene.Node node : form.getChildren()) {
+            if (node instanceof Label) {
+                ((Label) node).setStyle("-fx-text-fill: " + toHex(PRIMARY_TEXT) + ";");
+            }
+        }
+
         dialog.getDialogPane().setContent(form);
-        
+
+        // Style dialog
+        dialog.getDialogPane().setStyle("-fx-background-color: " + toHex(SURFACE) + ";");
+
+        // Convert result
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
-                LocalDateTime newTime = datePicker.getValue() != null 
-                    ? datePicker.getValue().atStartOfDay() 
-                    : null;
-                todoService.updateTodo(currentProject.getId(), todo.getId(), 
-                    titleField.getText(), newTime);
-                refreshCurrentView();
+                LocalDateTime newTime = datePicker.getValue() != null
+                        ? datePicker.getValue().atStartOfDay()
+                        : null;
+
+                todoService.updateTodo(todo.getId(), titleField.getText(),
+                        todo.getCategory(), newTime);
+
+                loadTodos();
                 updateStats();
-                updateProjectStats();
                 return todo;
             }
             return null;
         });
+
         dialog.showAndWait();
     }
-    
-    private void refreshCurrentView() {
-        if (isSearching) {
-            enterSearchMode(searchField.getText().trim());
-        } else if (currentProject != null) {
-            todoService.getProject(currentProject.getId()).ifPresent(project -> {
-                currentProject = project;
-                todos.setAll(project.getTodos());
+
+    private void deleteTodo(Todo todo, HBox container) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Delete Todo");
+        alert.setHeaderText("Delete '" + todo.getTitle() + "'?");
+        alert.setContentText("This action cannot be undone.");
+
+        DialogPane alertPane = alert.getDialogPane();
+        alertPane.setStyle("-fx-background-color: " + toHex(SURFACE) + ";");
+
+        ButtonType okButton = ButtonType.OK;
+        ButtonType cancelButton = ButtonType.CANCEL;
+        alert.getButtonTypes().setAll(okButton, cancelButton);
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            // Fade out animation
+            FadeTransition ft = new FadeTransition(Duration.millis(200), container);
+            ft.setFromValue(1.0);
+            ft.setToValue(0.0);
+            ft.setOnFinished(e -> {
+                boolean deleted = todoService.deleteTodo(todo.getId());
+                if (deleted) {
+                    loadTodos();
+                    updateStats();
+                }
             });
+            ft.play();
         }
     }
-    
+
     private void updateStats() {
-        int totalProjects = todoService.getTotalProjects();
-        int totalTodos = todoService.getTotalTodos();
-        int completed = todoService.getCompletedTodosCount();
-        double percentage = todoService.getOverallCompletionPercentage();
-        statsLabel.setText(String.format(
-            "Projects: %d | Todos: %d | Completed: %d (%.1f%%)",
-            totalProjects, totalTodos, completed, percentage
-        ));
+        statsLabel.setText(todoService.getStatsText());
+        statsLabel.setStyle("-fx-text-fill: " + toHex(SECONDARY_TEXT) + "; " +
+                "-fx-font-size: 13px;");
     }
-    
-    private void updateProjectStats() {
-        if (currentProject != null) {
-            projectStatsLabel.setText(String.format("(%d/%d completed)", 
-                currentProject.getCompletedCount(), currentProject.getTotalCount()));
-        }
-    }
-    
-    private String formatProjectDisplay(Project project) {
-        return String.format("%s - %d/%d (%s)", 
-            project.getName(),
-            project.getCompletedCount(),
-            project.getTotalCount(),
-            project.getCompletionPercentage());
-    }
-    
+
     private void showAlert(String title, String message, Alert.AlertType type) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+
+        DialogPane dialogPane = alert.getDialogPane();
+        dialogPane.setStyle("-fx-background-color: " + toHex(SURFACE) + ";");
+
         alert.showAndWait();
+    }
+
+    private String toHex(Color color) {
+        return String.format("#%02x%02x%02x",
+                (int) (color.getRed() * 255),
+                (int) (color.getGreen() * 255),
+                (int) (color.getBlue() * 255));
     }
 }

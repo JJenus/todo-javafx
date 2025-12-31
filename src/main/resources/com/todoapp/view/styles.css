@@ -1,63 +1,229 @@
-/* Main styles for Todo App */
+/* MaterialFX CSS with exact color palette */
+
+
+/* Override MaterialFX defaults with our color palette */
 .root {
-    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    /* Core structure */
+    -fx-background-color: #626d5e;
+
+    /* MaterialFX CSS variables */
+    -mfx-main: #8477bf;
+    -mfx-main-hover: #a18df9;
+    -mfx-main-pressed: #8477bf;
+    -mfx-danger: #c47368;
+    -mfx-danger-hover: #9e6772;
+    -mfx-secondary: #c1b09d;
+    -mfx-secondary-hover: #b6a38f;
+
+    /* Text */
+    -mfx-text-he: #434269;  /* High emphasis */
+    -mfx-text-me: #784b73;  /* Medium emphasis */
+    -mfx-text-le: #9e6772;  /* Low emphasis */
+
+    /* Backgrounds */
+    -mfx-bg-surface: #919c86;
+    -mfx-bg-elevated: #c0caad;
+    -mfx-bg-background: #626d5e;
+
+    /* Borders */
+    -mfx-border: #919c86;
+    -mfx-border-hover: #8477bf;
+    -mfx-border-focused: #8477bf;
 }
 
-.done-text {
-    -fx-text-fill: #9e9e9e;
-    -fx-strikethrough: true;
+/* Custom MFXTextField styling */
+.custom-mfx-text-field {
+    -mfx-background-color: #c0caad;
+    -mfx-border-color: #919c86;
+    -mfx-border-radius: 4px;
+    -mfx-border-width: 1px;
+    -mfx-focus-color: #8477bf;
+    -mfx-unfocus-color: #919c86;
+    -fx-prompt-text-fill: #784b73;
+    -fx-text-fill: #434269;
 }
 
-.overdue-text {
-    -fx-text-fill: #f44336;
-    -fx-font-weight: bold;
+.custom-mfx-text-field:focused {
+    -mfx-border-color: #8477bf;
+    -mfx-border-width: 2px;
 }
 
-.list-view {
-    -fx-background-color: white;
-    -fx-border-color: #ddd;
-    -fx-border-radius: 5px;
-    -fx-background-radius: 5px;
-}
-
-.list-cell {
-    -fx-padding: 10px;
-    -fx-border-color: transparent;
-    -fx-background-color: transparent;
-}
-
-.list-cell:hover {
-    -fx-background-color: #f5f5f5;
-}
-
-.list-cell:selected {
-    -fx-background-color: #e3f2fd;
-}
-
-.button {
-    -fx-padding: 8px 16px;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
+/* MFXButton styling */
+.mfx-button {
+    -mfx-background-radius: 4px;
+    -mfx-depth-level: LEVEL2;
     -fx-font-weight: bold;
     -fx-cursor: hand;
 }
 
-.button:hover {
-    -fx-opacity: 0.9;
+.mfx-button:primary {
+    -mfx-background-color: #8477bf;
+    -fx-text-fill: white;
 }
 
-.text-field, .date-picker {
-    -fx-background-color: white;
-    -fx-border-color: #ddd;
-    -fx-border-radius: 4px;
-    -fx-padding: 8px;
+.mfx-button:primary:hover {
+    -mfx-background-color: #a18df9;
 }
 
-.text-field:focused {
-    -fx-border-color: #2196F3;
+.mfx-button:secondary {
+    -mfx-background-color: #c1b09d;
+    -fx-text-fill: #434269;
+}
+
+.mfx-button:secondary:hover {
+    -mfx-background-color: #b6a38f;
+}
+
+.mfx-button:danger {
+    -mfx-background-color: #c47368;
+    -fx-text-fill: white;
+}
+
+.mfx-button:danger:hover {
+    -mfx-background-color: #9e6772;
+}
+
+/* MFXCheckbox styling */
+.mfx-checkbox {
+    -mfx-main-color: #8477bf;
+    -mfx-secondary-color: #c1b09d;
+}
+
+.mfx-checkbox .box {
+    -fx-background-color: #c0caad;
+    -fx-border-color: #919c86;
+    -fx-border-radius: 3px;
+}
+
+/* MFXIconButton styling */
+.mfx-icon-button {
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.mfx-icon-button:hover {
+    -fx-background-color: #c0caad;
+}
+
+/* ScrollPane */
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar:vertical .track {
+    -fx-background-color: transparent;
 }
 
 .scroll-bar:vertical .thumb {
-    -fx-background-color: #bdbdbd;
-    -fx-background-radius: 5px;
+    -fx-background-color: #919c86;
+    -fx-background-radius: 4px;
+}
+
+.scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #c0caad;
+}
+
+/* Labels */
+.label {
+    -fx-text-fill: #434269;
+}
+
+.label.secondary {
+    -fx-text-fill: #784b73;
+}
+
+.label.disabled {
+    -fx-text-fill: #9e6772;
+}
+
+/* Todo items */
+.todo-item {
+    -fx-background-color: #c0caad;
+    -fx-background-radius: 4px;
+    -fx-border-color: #626d5e;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.todo-item:hover {
+    -fx-background-color: #c1b09d;
+}
+
+.todo-item.completed {
+    -fx-background-color: #919c86;
+}
+
+.todo-item.completed .label {
+    -fx-text-fill: #9e6772;
+    -fx-strikethrough: true;
+}
+
+/* Date chips */
+.date-chip {
+    -fx-background-color: #c0caad;
+    -fx-background-radius: 12px;
+    -fx-text-fill: #784b73;
+    -fx-padding: 4px 12px;
+    -fx-font-size: 11px;
+    -fx-font-weight: 500;
+}
+
+/* Dialogs and alerts */
+.dialog-pane {
+    -fx-background-color: #919c86;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #8477bf;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-text-fill: white;
+}
+
+/* Date picker */
+.date-picker {
+    -fx-background-color: #c0caad;
+    -fx-border-color: #919c86;
+}
+
+.date-picker .arrow-button {
+    -fx-background-color: #8477bf;
+}
+
+.date-picker .arrow-button:hover {
+    -fx-background-color: #a18df9;
+}
+
+/* Focus ring - 2px solid, no glow */
+*:focused {
+    -fx-focus-color: #a18df9;
+    -fx-faint-focus-color: transparent;
+    -fx-border-width: 2px;
+}
+
+/* No heavy shadows */
+* {
+    -fx-effect: none;
+}
+
+.mfx-button, .mfx-text-field {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 4, 0, 0, 1);
+}
+
+/* Hover states - color shift only */
+.mfx-button:hover, .mfx-icon-button:hover {
+    -fx-scale-x: 1.0;
+    -fx-scale-y: 1.0;
+    -fx-translate-y: 0;
 }
