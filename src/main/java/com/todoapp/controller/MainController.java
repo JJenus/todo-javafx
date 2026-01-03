@@ -18,6 +18,7 @@ import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.coreui.CoreUiFree;
 
 import java.net.URL;
 import java.time.LocalDate;
@@ -129,14 +130,19 @@ public class MainController implements Initializable {
             "-mfx-depth-level: LEVEL2;"
         );
     }
-    
+
     private void styleSecondaryButton(MFXButton button) {
         button.setStyle(
-            "-mfx-background-color: " + AppColors.toCss(AppColors.getSecondaryAction()) + ";" +
-            "-mfx-text-fill: " + AppColors.toCss(AppColors.getSecondaryActionText()) + ";" +
-            "-mfx-background-radius: 20;" +
-            "-fx-font-size: 20px;" +
-            "-fx-padding: 5 10;"
+                "-mfx-background-color: " + AppColors.toCss(AppColors.getSecondaryAction()) + ";" +
+                        "-mfx-text-fill: " + AppColors.toCss(AppColors.getSecondaryActionText()) + ";" +
+                        "-fx-background-color: " + AppColors.toCss(AppColors.getSecondaryAction()) + ";" +
+                        "-fx-background-radius: 50%;" +          // Makes it circular
+                        "-fx-min-width: 40px;" +
+                        "-fx-min-height: 40px;" +
+                        "-fx-max-width: 40px;" +
+                        "-fx-max-height: 40px;" +
+                        "-fx-padding: 0;" +
+                        "-fx-alignment: center;"
         );
     }
 
@@ -271,72 +277,98 @@ public class MainController implements Initializable {
             rightContainer.getChildren().add(dateLabel);
         }
 
-        // Action buttons
+        // Action buttons - Initially hidden, show on hover
         HBox actionButtons = new HBox(4);
         actionButtons.setAlignment(Pos.CENTER_RIGHT);
+        actionButtons.setOpacity(0); // Start completely invisible
+        actionButtons.setManaged(false); // Don't take up layout space when invisible
 
-        // Edit button
+        // Show/hide action buttons on container hover
+        container.setOnMouseEntered(e -> {
+            if (!todo.isDone()) {
+                container.setStyle("-fx-background-color: " + AppColors.toCss(AppColors.getHoverItemBg()) + "; " +
+                        "-fx-background-radius: 4; " +
+                        "-fx-border-color: " + AppColors.toCss(AppColors.getCardBorder()) + "; " +
+                        "-fx-border-width: 1; " +
+                        "-fx-border-radius: 4; " +
+                        "-fx-cursor: hand;");
+            }
+            // Fade in action buttons
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(150), actionButtons);
+            fadeIn.setToValue(1.0);
+            fadeIn.play();
+            actionButtons.setManaged(true);
+        });
+
+        container.setOnMouseExited(e -> {
+            if (todo.isDone()) {
+                container.setStyle("-fx-background-color: " + AppColors.toCss(AppColors.getCompletedItemBg()) + "; " +
+                        "-fx-background-radius: 4; " +
+                        "-fx-border-color: " + AppColors.toCss(AppColors.getCardBorder()) + "; " +
+                        "-fx-border-width: 1; " +
+                        "-fx-border-radius: 4; " +
+                        "-fx-cursor: hand;");
+            } else {
+                container.setStyle("-fx-background-color: " + AppColors.toCss(AppColors.getDefaultItemBg()) + "; " +
+                        "-fx-background-radius: 4; " +
+                        "-fx-border-color: " + AppColors.toCss(AppColors.getCardBorder()) + "; " +
+                        "-fx-border-width: 1; " +
+                        "-fx-border-radius: 4; " +
+                        "-fx-cursor: hand;");
+            }
+            // Fade out action buttons
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(150), actionButtons);
+            fadeOut.setToValue(0);
+            fadeOut.setOnFinished(ev -> actionButtons.setManaged(false));
+            fadeOut.play();
+        });
+
+        // Edit button - COMPLETELY transparent, icon-only
         MFXButton editButton = new MFXButton(null);
-        FontIcon editIcon = new FontIcon(FontAwesomeSolid.PENCIL_ALT);
+        FontIcon editIcon = new FontIcon(CoreUiFree.PEN);
         editIcon.setIconSize(16);
-        editIcon.setIconColor(AppColors.toCss(AppColors.getDefaultIcon()));
+        editIcon.setIconColor(AppColors.getDefaultIcon());
         editButton.setGraphic(editIcon);
         editButton.setStyle("-mfx-background-color: transparent;" +
+                "-fx-background-color: transparent;" +
+                "-fx-border-color: transparent;" +
                 "-fx-padding: 4;" +
                 "-fx-cursor: hand;" +
-                "-fx-min-width: 36px;" +
-                "-fx-min-height: 36px;");
+                "-fx-min-width: 24px;" +
+                "-fx-min-height: 24px;");
         editButton.setOnAction(e -> editTodo(todo));
 
+        // Edit button hover - only change icon color
         editButton.setOnMouseEntered(e -> {
-            editIcon.setIconColor(AppColors.toCss(AppColors.getActionIcon()));
-            editButton.setStyle("-mfx-background-color: " + AppColors.toCss(AppColors.getElevatedSurface()) + ";" +
-                    "-fx-padding: 4;" +
-                    "-fx-background-radius: 4;" +
-                    "-fx-cursor: hand;" +
-                    "-fx-min-width: 36px;" +
-                    "-fx-min-height: 36px;");
+            editIcon.setIconColor(AppColors.getActionIcon());
         });
 
         editButton.setOnMouseExited(e -> {
-            editIcon.setIconColor(AppColors.toCss(AppColors.getDefaultIcon()));
-            editButton.setStyle("-mfx-background-color: transparent;" +
-                    "-fx-padding: 4;" +
-                    "-fx-cursor: hand;" +
-                    "-fx-min-width: 36px;" +
-                    "-fx-min-height: 36px;");
+            editIcon.setIconColor(AppColors.getDefaultIcon());
         });
 
-        // Delete button
+        // Delete button - COMPLETELY transparent, icon-only
         MFXButton deleteButton = new MFXButton(null);
-        FontIcon deleteIcon = new FontIcon(FontAwesomeSolid.TRASH_ALT);
+        FontIcon deleteIcon = new FontIcon(CoreUiFree.TRASH);
         deleteIcon.setIconSize(16);
-        deleteIcon.setIconColor(AppColors.toCss(AppColors.getDefaultIcon()));
+        deleteIcon.setIconColor(AppColors.getDefaultIcon());
         deleteButton.setGraphic(deleteIcon);
         deleteButton.setStyle("-mfx-background-color: transparent;" +
+                "-fx-background-color: transparent;" +
+                "-fx-border-color: transparent;" +
                 "-fx-padding: 4;" +
                 "-fx-cursor: hand;" +
-                "-fx-min-width: 36px;" +
-                "-fx-min-height: 36px;");
+                "-fx-min-width: 24px;" +
+                "-fx-min-height: 24px;");
         deleteButton.setOnAction(e -> deleteTodo(todo, container));
 
+        // Delete button hover - only change icon color
         deleteButton.setOnMouseEntered(e -> {
-            deleteIcon.setIconColor(AppColors.toCss(AppColors.getDangerIcon()));
-            deleteButton.setStyle("-mfx-background-color: " + AppColors.toCss(AppColors.getElevatedSurface()) + ";" +
-                    "-fx-padding: 4;" +
-                    "-fx-background-radius: 4;" +
-                    "-fx-cursor: hand;" +
-                    "-fx-min-width: 36px;" +
-                    "-fx-min-height: 36px;");
+            deleteIcon.setIconColor(AppColors.getDangerIcon());
         });
 
         deleteButton.setOnMouseExited(e -> {
-            deleteIcon.setIconColor(AppColors.toCss(AppColors.getDefaultIcon()));
-            deleteButton.setStyle("-mfx-background-color: transparent;" +
-                    "-fx-padding: 4;" +
-                    "-fx-cursor: hand;" +
-                    "-fx-min-width: 36px;" +
-                    "-fx-min-height: 36px;");
+            deleteIcon.setIconColor(AppColors.getDefaultIcon());
         });
 
         actionButtons.getChildren().addAll(editButton, deleteButton);
@@ -345,7 +377,6 @@ public class MainController implements Initializable {
         // Assemble container
         container.getChildren().addAll(checkBox, titleLabel, rightContainer);
 
-        // Set initial completed style if needed
         if (todo.isDone()) {
             container.setStyle("-fx-background-color: " + AppColors.toCss(AppColors.getCompletedItemBg()) + "; " +
                     "-fx-background-radius: 4; " +
@@ -521,13 +552,23 @@ public class MainController implements Initializable {
 
         alert.showAndWait();
     }
-    
+
     private void updateThemeToggleButton() {
+        FontIcon themeIcon;
+
         if (AppColors.getCurrentTheme() == AppColors.Theme.LIGHT) {
-            themeToggleButton.setText("🌙");  // Moon icon for switching to dark
+            themeIcon = new FontIcon(CoreUiFree.MOON); // Moon icon for switching to dark
+            themeIcon.setIconColor(AppColors.getDeepTwilight());
         } else {
-            themeToggleButton.setText("☀️");  // Sun icon for switching to light
+            themeIcon = new FontIcon(CoreUiFree.SUN);  // Sun icon for switching to light
+//            themeIcon.setIconColor(AppColors.getBrightTealBlue());
         }
+        themeIcon.setIconSize(20);
+
+        themeToggleButton.setText(null);
+        themeToggleButton.setGraphic(themeIcon);
+        themeToggleButton.setAlignment(Pos.CENTER);
+
         styleSecondaryButton(themeToggleButton);
     }
     

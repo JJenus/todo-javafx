@@ -1,14 +1,15 @@
 module com.todoapp {
     requires javafx.controls;
     requires javafx.fxml;
-    requires java.sql;
-    requires MaterialFX;
-    requires org.controlsfx.controls;
-    requires org.kordamp.ikonli.javafx;
-    requires org.kordamp.ikonli.material2;
-    requires mfx.resources;
     requires javafx.graphics;
-    requires org.kordamp.ikonli.fontawesome5;
+    requires java.sql;
+
+    // Third-party modules (check actual module names from their JARs)
+    requires MaterialFX;  // MaterialFX
+    requires org.controlsfx.controls;        // ControlsFX
+    requires org.kordamp.ikonli.javafx;      // Ikonli core
+    requires org.kordamp.ikonli.coreui;   // Material icons
+    requires org.kordamp.ikonli.fontawesome5; // FontAwesome icons
 
     opens com.todoapp to javafx.fxml;
     opens com.todoapp.controller to javafx.fxml;
